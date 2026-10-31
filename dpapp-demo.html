@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>微服务部署服务 — Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.7.8/dist/index.css">
+<style>
+:root{
+  --bg:#f7f8fa; --card:#fff; --border:#eceef1; --ink:#1a1f27; --muted:#6b7280; --faint:#9aa1ab;
+  --brand:#0e9484; --brand-deep:#0b6e63; --good:#0ca30c; --warn:#f59e0b; --crit:#d03b3b;
+  --sidebar:#0f1419;
+  --mono:"JetBrains Mono",Consolas,"Cascadia Mono",monospace;
+  --sans:"IBM Plex Sans","PingFang SC","Microsoft YaHei",-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;font-size:14px}
+.mono{font-family:var(--mono)}
+
+/* login */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0e141a}
+.login-card{width:380px;background:#fff;border-radius:12px;padding:36px 34px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.brand{display:flex;align-items:center;gap:11px;margin-bottom:4px}
+.brand .logo{width:38px;height:38px;border-radius:9px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:17px;flex-shrink:0}
+.brand h1{font-size:20px;margin:0;font-weight:600;color:#0f1419}
+.login-card .sub{color:var(--muted);font-size:13px;margin:4px 0 24px}
+.login-card .el-button{width:100%;height:40px;font-weight:600;margin-top:4px}
+
+/* layout */
+.layout{display:flex;min-height:100vh}
+.sidebar{width:208px;background:var(--sidebar);color:#9aa7b2;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;flex-shrink:0}
+.sidebar .brand{padding:20px 20px 16px;color:#fff}
+.sidebar .brand .logo{width:32px;height:32px;font-size:15px;border-radius:8px}
+.sidebar .brand h1{font-size:12px;color:#fff}
+.nav{padding:8px 12px;flex:1}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;cursor:pointer;font-size:13.5px;margin-bottom:2px;transition:background .15s,color .15s}
+.nav-item:hover{background:rgba(255,255,255,.05);color:#e6edf1}
+.nav-item.active{background:rgba(14,148,132,.18);color:#45c4b3}
+.nav-item .el-icon{font-size:16px}
+.sidebar .foot{padding:14px 20px;font-size:11px;color:#5c6a74;font-family:var(--mono)}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{height:54px;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 22px;position:sticky;top:0;z-index:10}
+.crumb{font-size:13.5px;color:var(--muted)} .crumb b{color:var(--ink);font-weight:600}
+.topbar .user{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--muted)}
+.avatar{width:28px;height:28px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
+.content{padding:24px 26px;flex:1;max-width:none;min-height:calc(90vh - 54px)}
+
+.page-title{font-size:17px;font-weight:600;margin:0 0 3px}
+.page-sub{font-size:13px;color:var(--muted);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:18px 20px;box-shadow:0 1px 2px rgba(0,0,0,.02)}
+.card h3{font-size:13.5px;font-weight:600;margin:0 0 14px;color:var(--ink)}
+.mb16{margin-bottom:16px}
+
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:15px 18px}
+.stat .label{font-size:12.5px;color:var(--muted)}
+.stat .value{font-size:26px;font-weight:600;margin-top:4px;font-family:var(--mono);letter-spacing:-.5px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-lr{display:grid;grid-template-columns:230px 1fr;gap:16px;align-items:start}
+
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:middle}
+.dot.on{background:var(--good)} .dot.off{background:#c0c6cd} .dot.err{background:var(--crit)} .dot.warn{background:var(--warn)}
+.pill{display:inline-flex;align-items:center;font-family:var(--mono);font-size:11.5px;padding:1px 8px;border-radius:12px;border:1px solid var(--border);color:#525e6b;background:#fafbfc;flex-shrink:0}
+.pill.ok{color:#0b6e63;background:#eef6f4;border-color:#cfe6e1}
+.pill.bad{color:#b91c1c;background:#fdf0f0;border-color:#f4d0d0}
+.pill.warn{color:#b45309;background:#fdf6ec;border-color:#f2e0c0}
+
+.el-table{--el-table-border-color:var(--border);--el-table-header-bg-color:#fafbfc;--el-table-header-text-color:#525e6b;font-size:13px}
+.el-table th.el-table__cell{font-weight:600}
+.op-link{cursor:pointer;color:var(--brand-deep);font-size:13px;margin-right:14px} .op-link:hover{text-decoration:underline}
+.op-link.danger{color:var(--crit)}
+.toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+
+.terminal{background:#0d1117;border-radius:9px;border:1px solid #1c252c;overflow:hidden;font-family:var(--mono);font-size:12.5px;line-height:1.7}
+.terminal .tbar{display:flex;align-items:center;gap:8px;padding:8px 14px;background:#12181f;border-bottom:1px solid #1c252c;color:#8fa0ab;font-size:12px}
+.terminal .tbar .g{width:10px;height:10px;border-radius:50%}
+.terminal .tbody{padding:12px 14px;height:300px;overflow:auto;color:#b7c4cd}
+.terminal .ln{display:flex;gap:10px}
+.terminal .ln .t{color:#5c6a74;flex-shrink:0}
+.terminal .INFO{color:#56c8ff} .terminal .WARN{color:#f5c069} .terminal .ERROR{color:#ff7b7b}
+
+.kv{width:100%;border-collapse:collapse;font-size:13px}
+.kv td{padding:8px 10px;border-bottom:1px solid var(--border)}
+.kv .k{font-family:var(--mono);color:#0b6e63;font-weight:500;white-space:nowrap}
+.kv .v{width:55%} .kv .v input{font-family:var(--mono);font-size:12.5px}
+.codeview{background:#0d1117;border-radius:9px;border:1px solid #1c252c;padding:16px 18px;font-family:var(--mono);font-size:12.5px;line-height:1.8;color:#c8d4dc;overflow:auto;max-height:380px;white-space:pre}
+.codeedit{width:100%;min-height:360px;background:#0d1117;border:1px solid #1c252c;border-radius:9px;padding:16px 18px;font-family:var(--mono);font-size:12.5px;line-height:1.8;color:#c8d4dc;resize:vertical;box-sizing:border-box}
+.file-item{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:7px;cursor:pointer;font-size:13px;color:#3f4650;overflow:hidden}
+.file-item:hover{background:#f4f6f8}
+.file-item.active{background:#eef6f4;color:#0b6e63;font-weight:500}
+.file-item .el-icon{font-size:15px;color:#9aa1ab}
+.file-item.active .el-icon{color:#0e9484}
+.chart{width:100%;height:240px} .chart-sm{width:100%;height:200px}
+.fade-enter-active{transition:opacity .15s} .fade-enter-from{opacity:0}
+.content.full{max-width:none}
+.terminal.big{display:flex;flex-direction:column;height:calc(90vh - 160px)}
+.terminal.big .tbody{flex:1;height:auto}
+.terminal mark{background:#f5c069;color:#0d1117;padding:0 2px;border-radius:2px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script type="text/x-template" id="tpl">
+<div>
+  <div v-if="!authed" class="login-wrap">
+    <div class="login-card">
+      <div class="brand"><div class="logo">d</div><h1>微服务部署服务</h1></div>
+      <p class="sub">Microservice Deployment Management Platform</p>
+      <el-form @submit.prevent="doLogin">
+        <el-form-item><el-input v-model="loginForm.user" placeholder="用户名" size="large"/></el-form-item>
+        <el-form-item><el-input v-model="loginForm.pass" type="password" placeholder="密码" size="large" show-password/></el-form-item>
+        <el-button type="primary" size="large" @click="doLogin">登 录</el-button>
+      </el-form>
+    </div>
+  </div>
+
+  <div v-else class="layout">
+    <aside class="sidebar">
+      <div class="brand"><div class="logo">d</div><h1>微服务部署服务</h1></div>
+      <div class="nav">
+        <div class="nav-item" :class="{active:view==='dashboard'}" @click="go('dashboard')"><el-icon><Odometer/></el-icon>总览</div>
+        <div class="nav-item" :class="{active:view==='machines'}" @click="go('machines')"><el-icon><Monitor/></el-icon>机器管理</div>
+        <div class="nav-item" :class="{active:['apps','app-detail','instance-detail'].includes(view)}" @click="go('apps')"><el-icon><Grid/></el-icon>应用管理</div>
+        <div class="nav-item" :class="{active:view==='drill'}" @click="go('drill')"><el-icon><Coin/></el-icon>数据库切换</div>
+        <div class="nav-item" :class="{active:view==='logs'}" @click="go('logs')"><el-icon><Document/></el-icon>日志管理</div>
+        <div class="nav-item" :class="{active:view==='config'}" @click="go('config')"><el-icon><Files/></el-icon>配置管理</div>
+        <div class="nav-item" :class="{active:view==='nacos'}" @click="go('nacos')"><el-icon><Connection/></el-icon>Nacos 配置</div>
+        <div class="nav-item" :class="{active:view==='settings'}" @click="go('settings')"><el-icon><Setting/></el-icon>设置</div>
+      </div>
+      <div class="foot">dpapp-center v0.1.0</div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="crumb">
+          <template v-if="view==='dashboard'"><b>总览</b></template>
+          <template v-else-if="view==='machines'"><b>机器管理</b></template>
+          <template v-else-if="view==='apps'"><b>应用管理</b></template>
+          <template v-else-if="view==='app-detail'">应用管理 / <b>{{curApp?.name}}</b></template>
+          <template v-else-if="view==='instance-detail'">应用管理 / {{selectedApp?.name}} / <b>{{selectedInstance?.machine}}</b></template>
+          <template v-else-if="view==='drill'"><b>数据库切换</b></template>
+          <template v-else-if="view==='logs'"><b>日志管理</b></template>
+          <template v-else-if="view==='config'"><b>配置管理</b></template>
+          <template v-else-if="view==='nacos'"><b>Nacos 配置</b></template>
+          <template v-else-if="view==='settings'"><b>设置</b></template>
+        </div>
+        <div class="user"><div class="avatar">A</div>admin</div>
+      </header>
+
+      <div class="content" :class="{full:view==='logs'}">
+        <transition name="fade" mode="out-in">
+
+        <!-- 总览 -->
+        <div v-if="view==='dashboard'" key="d">
+          <div class="stat-grid">
+            <div class="stat"><div class="label">机器</div><div class="value">{{machines.length}}</div></div>
+            <div class="stat"><div class="label">应用</div><div class="value">{{applications.length}}</div></div>
+            <div class="stat"><div class="label">运行中</div><div class="value" style="color:var(--good)">{{runningCount}}</div></div>
+            <div class="stat"><div class="label">已停止</div><div class="value" style="color:var(--muted)">{{stoppedCount}}</div></div>
+          </div>
+          <div class="grid-2">
+            <div class="card"><h3>实例状态</h3><div id="chart-status" class="chart-sm"></div></div>
+            <div class="card"><h3>最近部署</h3>
+              <el-table :data="deployments" size="small">
+                <el-table-column prop="t" label="时间" width="150"></el-table-column>
+                <el-table-column prop="app" label="应用" width="110"></el-table-column>
+                <el-table-column prop="ver" label="版本" width="80"><template #default="s"><span class="mono">{{s.row.ver}}</span></template></el-table-column>
+                <el-table-column label="结果" width="70"><template #default="s"><span class="pill" :class="s.row.res==='ok'?'ok':'bad'">{{s.row.res==='ok'?'成功':'失败'}}</span></template></el-table-column>
+              </el-table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 机器管理 -->
+        <div v-else-if="view==='machines'" key="m">
+          <div class="toolbar">
+            <el-input v-model="machineQ" placeholder="搜索" style="width:220px" clearable><template #prefix><el-icon><Search/></el-icon></template></el-input>
+            <el-button type="primary" @click="openMachine"><el-icon><Plus/></el-icon>&nbsp;新增机器</el-button>
+          </div>
+          <div class="card" style="padding:0">
+            <el-table :data="machines">
+              <el-table-column label="名称" min-width="180"><template #default="s"><span class="dot" :class="s.row.status==='on'?'on':'err'"></span>{{s.row.name}}</template></el-table-column>
+              <el-table-column label="主机" min-width="180"><template #default="s"><span class="mono">{{s.row.host}}:{{s.row.port}}</span></template></el-table-column>
+              <el-table-column label="模式" width="100"><template #default="s"><span class="pill">{{modeLabel(s.row.mode)}}</span></template></el-table-column>
+              <el-table-column label="状态" width="100"><template #default="s"><span class="pill" :class="s.row.status==='on'?'ok':'bad'">{{s.row.status==='on'?'健康':'异常'}}</span></template></el-table-column>
+              <el-table-column label="操作" width="180"><template #default="s"><span class="op-link" @click="testMachine(s.row)">测试连接</span><span class="op-link" @click="editMachine(s.row)">编辑</span><span class="op-link danger" @click="delMachine(s.row)">删除</span></template></el-table-column>
+            </el-table>
+          </div>
+        </div>
+
+        <!-- 应用管理 -->
+        <div v-else-if="view==='apps'" key="a">
+          <div class="toolbar">
+            <el-input v-model="appQ" placeholder="搜索应用" style="width:220px" clearable><template #prefix><el-icon><Search/></el-icon></template></el-input>
+            <el-button type="primary" @click="openAppForm"><el-icon><Plus/></el-icon>&nbsp;新增应用</el-button>
+          </div>
+          <div class="card" style="padding:0">
+            <el-table :data="applications">
+              <el-table-column label="应用名" width="160"><template #default="s"><b>{{s.row.name}}</b></template></el-table-column>
+              <el-table-column prop="desc" label="描述"></el-table-column>
+              <el-table-column label="实例" width="80"><template #default="s"><span class="mono">{{s.row.instances}}</span></template></el-table-column>
+              <el-table-column label="运行 / 停止" width="120"><template #default="s"><span class="mono" style="color:#0b6e63">{{s.row.running}}</span><span style="color:#c0c6cd"> / </span><span class="mono" style="color:#9aa1ab">{{s.row.stopped}}</span></template></el-table-column>
+              <el-table-column label="操作" width="170"><template #default="s"><span class="op-link" @click="openApp(s.row)">详情</span><span class="op-link" @click="selectedApp=s.row;openDeploy()">滚动发布</span></template></el-table-column>
+            </el-table>
+          </div>
+        </div>
+
+        <!-- 应用详情 -->
+        <div v-else-if="view==='app-detail'" key="ad">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+            <el-button size="small" @click="backApps()"><el-icon><ArrowLeft/></el-icon>&nbsp;返回</el-button>
+            <span class="pill ok">微服务</span>
+            <span style="color:var(--muted);font-size:13px">{{curApp?.desc}} · {{appInstances.length}} 个实例</span>
+            <div style="margin-left:auto"><el-button type="primary" @click="openDeploy()"><el-icon><Upload/></el-icon>&nbsp;滚动发布</el-button></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px">
+            <div class="card"><h3>JAR 目录</h3><div class="mono" style="font-size:13px;word-break:break-all">{{curApp?.jarDir}}</div></div>
+            <div class="card"><h3>日志目录</h3><div class="mono" style="font-size:13px;word-break:break-all">{{curApp?.logDir}}</div></div>
+            <div class="card"><h3>启动文件目录</h3><div class="mono" style="font-size:13px;word-break:break-all">{{curApp?.binDir}}</div></div>
+            <div class="card"><h3>配置文件目录</h3><div class="mono" style="font-size:13px;word-break:break-all">{{curApp?.cfgDir}}</div></div>
+          </div>
+          <div class="card" style="margin-bottom:16px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <h3 style="margin:0">启动命令</h3>
+              <el-button size="small" @click="openAppCfg">编辑应用配置</el-button>
+            </div>
+            <div class="mono" style="font-size:13px;word-break:break-all">{{curApp?.startCmd}}</div>
+          </div>
+          <div class="card" style="padding:0">
+            <el-table :data="appInstances">
+              <el-table-column label="机器" min-width="170"><template #default="s">{{s.row.machine}}</template></el-table-column>
+              <el-table-column label="状态" width="100"><template #default="s"><span class="dot" :class="s.row.status==='on'?'on':'off'"></span>{{statusLabel(s.row.status)}}</template></el-table-column>
+              <el-table-column label="端口" width="90"><template #default="s"><span class="mono">{{s.row.port}}</span></template></el-table-column>
+              <el-table-column label="PID" width="90"><template #default="s"><span class="mono">{{s.row.pid||'—'}}</span></template></el-table-column>
+              <el-table-column label="JAR" min-width="170"><template #default="s"><span class="mono">{{s.row.jar}}</span></template></el-table-column>
+              <el-table-column label="操作" width="180"><template #default="s"><span class="op-link" @click="openInstance(s.row)">详情</span><span class="op-link" @click="s.row.status==='off'?startInstance(s.row):restartInstance(s.row)">{{s.row.status==='off'?'启动':'重启'}}</span><span class="op-link danger" v-if="s.row.status==='on'" @click="stopInstance(s.row)">停止</span></template></el-table-column>
+            </el-table>
+          </div>
+          <div class="card" style="margin-top:16px">
+            <h3>发布历史</h3>
+            <el-table :data="appReleases" size="small">
+              <el-table-column label="版本" width="130"><template #default="s"><span class="mono">v{{s.row.ver}}</span><span v-if="s.row.current" class="pill ok" style="margin-left:8px">当前</span></template></el-table-column>
+              <el-table-column prop="t" label="发布时间" width="160"></el-table-column>
+              <el-table-column prop="by" label="操作人" width="90"></el-table-column>
+              <el-table-column prop="note" label="说明" min-width="140"></el-table-column>
+              <el-table-column label="操作" width="130"><template #default="s"><span v-if="!s.row.current" class="op-link" @click="rollbackTo(s.row)">回滚到此版本</span></template></el-table-column>
+            </el-table>
+          </div>
+        </div>
+
+        <!-- 实例详情 -->
+        <div v-else-if="view==='instance-detail'" key="id">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+            <el-button size="small" @click="backApp()"><el-icon><ArrowLeft/></el-icon>&nbsp;返回</el-button>
+            <span class="mono" style="color:var(--muted);font-size:12.5px">{{selectedInstance?.jar}} · v{{selectedInstance?.ver}}</span>
+            <div style="margin-left:auto">
+              <el-button v-if="selectedInstance?.status==='off'" type="success" @click="startInstance(selectedInstance)">启动</el-button>
+              <el-button v-else @click="restartInstance(selectedInstance)">重启</el-button>
+              <el-button v-if="selectedInstance?.status==='on'" type="danger" plain @click="stopInstance(selectedInstance)">停止</el-button>
+            </div>
+          </div>
+          <el-tabs v-model="activeTab">
+            <el-tab-pane label="概览" name="overview">
+              <div class="grid-2">
+                <div class="card"><h3>基本信息</h3>
+                  <el-descriptions :column="1" size="small">
+                    <el-descriptions-item label="状态">{{statusLabel(selectedInstance?.status)}}</el-descriptions-item>
+                    <el-descriptions-item label="PID"><span class="mono">{{selectedInstance?.pid||'—'}}</span></el-descriptions-item>
+                    <el-descriptions-item label="端口"><span class="mono">{{selectedInstance?.port}}</span></el-descriptions-item>
+                    <el-descriptions-item label="JAR 版本"><span class="mono">v{{selectedInstance?.ver}}</span></el-descriptions-item>
+                    <el-descriptions-item label="启动时间"><span class="mono">{{selectedInstance?.started}}</span></el-descriptions-item>
+                  </el-descriptions>
+                </div>
+                <div class="card"><h3>部署配置</h3>
+                  <table class="kv">
+                    <tr><td class="k">JAR 位置</td><td class="v mono">{{jarPath}}</td></tr>
+                    <tr><td class="k">配置文件</td><td class="v mono" style="word-break:break-all">{{ (appFiles[selectedInstance?.app]||[]).map(f=>(curInstApp?.cfgDir||'')+'/'+f).join('  ') }}</td></tr>
+                    <tr><td class="k">日志路径</td><td class="v mono">{{logPath}}</td></tr>
+                    <tr><td class="k">启动命令</td><td class="v mono" style="word-break:break-all">{{startCmd}}</td></tr>
+                  </table>
+                  <div style="margin-top:12px;display:flex;gap:10px">
+                    <el-button size="small" @click="openAppCfg">编辑应用配置</el-button>
+                    <el-button size="small" @click="goConfig(selectedInstance)">前往配置管理</el-button>
+                  </div>
+                </div>
+              </div>
+            </el-tab-pane>
+            <el-tab-pane label="日志" name="log">
+              <div class="terminal">
+                <div class="tbar">
+                  <span class="g" style="background:#ff5f56"></span><span class="g" style="background:#ffbd2e"></span><span class="g" style="background:#27c93f"></span>
+                  <span class="mono">{{curInstApp ? (curInstApp.logDir+'/app.log') : ''}}</span>
+                  <el-input v-model="logKeyword" placeholder="关键字" size="small" clearable style="width:180px;margin-left:auto"><template #prefix><el-icon><Search/></el-icon></template></el-input>
+                  <span v-if="logKeyword" style="color:var(--faint)">{{filteredLogLines.length}} 行</span>
+                </div>
+                <div class="tbody" ref="logBody">
+                  <div class="ln" v-for="(l,i) in filteredLogLines" :key="i"><span class="t">{{l.t}}</span><span :class="l.lvl">{{l.lvl}}</span><span v-html="hlText(l.msg)"></span></div>
+                </div>
+              </div>
+            </el-tab-pane>
+            <el-tab-pane label="监控" name="monitor">
+              <div class="stat-grid">
+                <div class="stat"><div class="label">堆 used / max</div><div class="value" style="font-size:20px">1.2G<span style="font-size:12px;color:var(--muted)"> / 1.9G</span></div></div>
+                <div class="stat"><div class="label">Metaspace</div><div class="value" style="font-size:20px">256M</div></div>
+                <div class="stat"><div class="label">GC (Y / F)</div><div class="value" style="font-size:20px">120<span style="font-size:12px;color:var(--muted)"> / 3</span></div></div>
+                <div class="stat"><div class="label">线程数</div><div class="value" style="font-size:20px">213</div></div>
+              </div>
+              <div class="card mb16"><h3>堆内存趋势（近 1 小时）</h3><div id="chart-heap" class="chart"></div></div>
+              <div class="grid-2">
+                <div class="card"><h3>GC 耗时</h3><div id="chart-gc" class="chart-sm"></div></div>
+                <div class="card"><h3>线程数</h3><div id="chart-thread" class="chart-sm"></div></div>
+              </div>
+            </el-tab-pane>
+          </el-tabs>
+        </div>
+
+        <!-- 日志管理 -->
+        <div v-else-if="view==='logs'" key="lg">
+          <div class="toolbar">
+            <el-select v-model="logMachine" style="width:190px" @change="onLogMachine"><el-option v-for="m in machines" :key="m.id" :label="m.name" :value="m.name"/></el-select>
+            <el-select v-model="logInstance" style="width:220px" @change="onLogInstance"><el-option v-for="i in logInstances" :key="i.id" :label="i.app+' · 端口 '+i.port" :value="String(i.id)"/></el-select>
+            <el-select v-model="logFile" style="width:210px" @change="onLogFile"><el-option v-for="f in curLogFiles" :key="f" :label="f" :value="f"/></el-select>
+            <el-input v-model="logKeyword" placeholder="关键字查询" clearable style="width:200px"><template #prefix><el-icon><Search/></el-icon></template></el-input>
+            <div style="margin-left:auto">
+              <el-button v-if="!logDownloading" @click="startRealDownload()"><el-icon><Download/></el-icon>&nbsp;实时下载</el-button>
+              <el-button v-else type="warning" @click="endRealDownload()"><el-icon><Download/></el-icon>&nbsp;结束下载</el-button>
+              <el-button @click="downloadLog()">下载日志</el-button>
+            </div>
+          </div>
+          <div class="terminal big">
+            <div class="tbar">
+              <span class="g" style="background:#ff5f56"></span><span class="g" style="background:#ffbd2e"></span><span class="g" style="background:#27c93f"></span>
+              <span class="mono">{{curLogApp ? (curLogApp.logDir+'/'+logFile) : ''}}</span>
+              <span style="margin-left:auto;display:inline-flex;gap:10px">
+                <span v-if="logKeyword" style="color:var(--faint)">匹配 {{filteredLogLines.length}} 行</span>
+                <span v-if="logDownloading" style="color:var(--warn)">● 实时下载中 · {{logLines.length - logStartIndex}} 行</span>
+              </span>
+            </div>
+            <div class="tbody" ref="logBody">
+              <div class="ln" v-for="(l,i) in filteredLogLines" :key="i"><span class="t">{{l.t}}</span><span :class="l.lvl">{{l.lvl}}</span><span v-html="hlText(l.msg)"></span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 配置管理 -->
+        <div v-else-if="view==='config'" key="cfg">
+          <div class="toolbar">
+            <el-select v-model="configApp" style="width:180px" @change="onCfgApp"><el-option v-for="a in applications" :key="a.id" :label="a.name" :value="a.name"/></el-select>
+            <el-select v-model="configInst" style="width:180px"><el-option v-for="i in configInstances" :key="i.id" :label="i.machine" :value="i.machine"/></el-select>
+            <el-button type="primary" style="margin-left:auto" @click="showDiff()"><el-icon><View/></el-icon>&nbsp;查看差异</el-button>
+            <el-button type="success" @click="saveCfg()">保存</el-button>
+          </div>
+          <div class="grid-lr">
+            <div class="card" style="padding:8px">
+              <div style="padding:9px 12px 10px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--border);margin-bottom:6px">部署目录<br><span class="mono" style="color:var(--ink);font-size:12.5px">{{curCfgDir}}</span></div>
+              <div class="file-item" v-for="f in configFiles" :key="f" :class="{active:selectedFile===f}" @click="pickFile(f)"><el-icon><Document/></el-icon>{{f}}</div>
+            </div>
+            <div class="card">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                <h3 style="margin:0" class="mono">{{curCfgDir}}/{{selectedFile}}</h3>
+                <div>
+                  <span class="pill">{{fileFmt}}</span>
+                  <el-radio-group v-if="isYaml" v-model="cfgMode" size="small" style="margin-left:10px">
+                    <el-radio-button value="kv">结构化</el-radio-button>
+                    <el-radio-button value="text">文本</el-radio-button>
+                  </el-radio-group>
+                </div>
+              </div>
+              <table class="kv" v-if="isYaml && cfgMode==='kv'">
+                <tr v-for="(r,i) in cfgRows" :key="i"><td class="k">{{r.k}}</td><td class="v"><el-input v-model="r.v" size="small"/></td></tr>
+              </table>
+              <div class="codeview" v-else>{{editorText}}</div>
+              <div style="font-size:12px;color:var(--faint);margin-top:12px">完整路径 = 部署目录 + 文件名；相对路径存于实例 config_files 字段，经连接器 ReadConfig 从远端拉取</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Nacos -->
+        <div v-else-if="view==='nacos'" key="n">
+          <div class="card mb16" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <span style="font-size:13px;color:var(--muted)">服务器</span>
+            <span class="mono" style="font-weight:500">{{nacosConn.host}}:{{nacosConn.port}}</span>
+            <span style="font-size:13px;color:var(--muted)">命名空间</span>
+            <span class="pill">{{nacosConn.namespace}}</span>
+            <span style="font-size:13px;color:var(--muted)">用户</span>
+            <span class="mono">{{nacosConn.username}}</span>
+            <el-button size="small" style="margin-left:auto" @click="nacosConnVisible=true">编辑连接</el-button>
+          </div>
+          <div class="toolbar">
+            <el-select v-model="nacosIp" placeholder="选择机器 / IP" style="width:210px" clearable @change="onNacosFilter"><el-option v-for="m in machines" :key="m.id" :label="m.name+' · '+m.host" :value="m.host"/></el-select>
+            <el-select v-model="nacosApp" placeholder="选择应用" style="width:180px" clearable @change="onNacosFilter"><el-option v-for="a in applications" :key="a.id" :label="a.name" :value="a.name"/></el-select>
+          </div>
+          <div class="grid-lr">
+            <div class="card" style="padding:8px">
+              <div class="file-item" v-for="(c,i) in filteredNacos" :key="i" :class="{active:nacosSelected===i}" @click="selectNacos(i)">
+                <span class="mono" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{c.dataId}}</span><span class="pill">{{c.fmt}}</span>
+              </div>
+              <div v-if="!filteredNacos.length" style="padding:20px;color:var(--faint);font-size:13px;text-align:center">未找到配置文件</div>
+            </div>
+            <div class="card">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                <h3 style="margin:0" class="mono">{{curNacos?.dataId}}</h3>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="pill">{{curNacos?.group}}</span>
+                  <el-radio-group v-if="nacosIsKv" v-model="nacosMode" size="small" @change="onNacosModeChange">
+                    <el-radio-button value="kv">结构化</el-radio-button>
+                    <el-radio-button value="text">文本</el-radio-button>
+                  </el-radio-group>
+                  <el-button size="small" @click="showDiff()"><el-icon><View/></el-icon>&nbsp;查看差异</el-button>
+                  <el-button size="small" type="primary" @click="publishNacos">发布到 Nacos</el-button>
+                </div>
+              </div>
+              <table class="kv" v-if="curNacos && nacosIsKv && nacosMode==='kv'">
+                <tr v-for="(r,i) in nacosKvRows" :key="i"><td class="k">{{r.k}}</td><td class="v"><el-input v-model="r.v" size="small"/></td></tr>
+              </table>
+              <textarea v-else-if="curNacos" class="codeedit" v-model="curNacos.content"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- 设置 -->
+        <div v-else-if="view==='settings'" key="s">
+          <div class="card" style="max-width:420px">
+            <h3>全局参数</h3>
+            <el-form label-width="120px">
+              <el-form-item label="JVM 采集间隔"><el-input value="5s" class="mono"/></el-form-item>
+              <el-form-item label="日志回放行数"><el-input value="1000" class="mono"/></el-form-item>
+              <el-form-item label="健康检查超时"><el-input value="60s" class="mono"/></el-form-item>
+              <el-form-item label="分片大小"><el-input value="5MB" class="mono"/></el-form-item>
+              <el-button type="primary" @click="saveSettings">保存</el-button>
+            </el-form>
+          </div>
+        </div>
+
+        <!-- 数据库切换 -->
+        <div v-else-if="view==='drill'" key="dr">
+          <div class="toolbar">
+            <el-select v-model="dbApp" style="width:220px"><el-option v-for="a in applications" :key="a.id" :label="a.name" :value="a.name"/></el-select>
+            <el-button type="primary" @click="startDbSwitch"><el-icon><Coin/></el-icon>&nbsp;执行数据库切换</el-button>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <h3 style="margin:0">主库</h3>
+                <span class="pill" :class="curDb?.current==='primary'?'ok':''">{{curDb?.current==='primary'?'当前连接':'备用'}}</span>
+              </div>
+              <div class="mono" style="font-size:13px">{{curDb?.primary}}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px">MySQL 8.0 · 读写</div>
+            </div>
+            <div class="card">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <h3 style="margin:0">备库</h3>
+                <span class="pill" :class="curDb?.current==='backup'?'ok':''">{{curDb?.current==='backup'?'当前连接':'备用'}}</span>
+              </div>
+              <div class="mono" style="font-size:13px">{{curDb?.backup}}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px">MySQL 8.0 · 只读</div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:16px">
+            <h3>切换说明</h3>
+            <div style="font-size:13px;color:var(--muted);line-height:1.8">执行切换后，将更新应用配置 <span class="mono">spring.datasource.url</span> 指向目标数据库，并重启实例生效，完成主备数据库切换。</div>
+          </div>
+        </div>
+
+        </transition>
+      </div>
+    </div>
+  </div>
+
+  <!-- 部署对话框 -->
+  <el-dialog v-model="deployVisible" title="部署发布" width="520px" :close-on-click-modal="false">
+    <div v-if="!deployRunning">
+      <el-radio-group v-model="deployMode" style="margin-bottom:14px">
+        <el-radio-button value="single">单实例</el-radio-button>
+        <el-radio-button value="rolling">应用滚动发布</el-radio-button>
+      </el-radio-group>
+      <div v-if="deployMode==='rolling'" style="background:#fafbfc;border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:14px">
+        <b>{{selectedApp?.name || 'nsys'}}</b>
+        <span style="color:var(--muted);font-size:13px">实例 {{selectedApp ? appInstances.length : 3}} 个</span>
+        <span style="color:var(--muted);font-size:13px;margin-left:auto">每批</span>
+        <el-input-number v-model="batchSize" :min="1" :max="5" size="small"/>
+      </div>
+      <div v-else style="background:#fafbfc;border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:14px">
+        <b>{{selectedApp?.name || 'nsys'}}</b>
+        <span style="color:var(--muted);font-size:13px">目标实例</span>
+        <el-select v-model="deployTarget" size="small" style="width:190px"><el-option v-for="i in appInstances" :key="i.id" :label="i.machine+' · 端口 '+i.port" :value="i.id"/></el-select>
+      </div>
+      <el-upload drag action="#" :auto-upload="false">
+        <el-icon style="font-size:36px;color:var(--brand)"><UploadFilled/></el-icon>
+        <div style="font-size:13px;margin-top:6px">拖拽 JAR 或 <em>点击选择</em></div>
+        <template #tip><div style="font-size:12px;color:var(--faint);margin-top:6px">200–300MB · 分片上传 + 断点续传</div></template>
+      </el-upload>
+      <el-form label-width="70px" style="margin-top:14px">
+        <el-form-item label="版本号"><el-input v-model="deployVer" placeholder="如 1.4.3" class="mono" style="width:200px"/></el-form-item>
+      </el-form>
+    </div>
+    <div v-else>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>上传 JAR</span><span class="mono">{{uploadPct}}%</span></div>
+      <el-progress :percentage="uploadPct" :stroke-width="8" :color="'#0e9484'"/>
+      <div style="margin-top:16px">
+        <div v-for="(s,i) in deploySteps" :key="i" style="display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px">
+          <span class="pill" :class="deployStep>i?'ok':(deployStep===i?'warn':'')">{{deployStep>i?'✓':(i+1)}}</span>
+          <span :style="deployStep>=i?{color:'var(--ink)'}:{color:'var(--faint)'}">{{s}}</span>
+        </div>
+      </div>
+      <el-alert v-if="deployStep>=7" type="success" :closable="false" title="发布完成 · 健康检查通过" style="margin-top:8px"/>
+    </div>
+    <template #footer>
+      <el-button @click="deployVisible=false">取消</el-button>
+      <el-button v-if="!deployRunning" type="primary" @click="startDeploy()">开始部署</el-button>
+      <el-button v-else type="primary" @click="deployVisible=false">完成</el-button>
+    </template>
+  </el-dialog>
+
+  <!-- diff 对话框 -->
+  <el-dialog v-model="diffVisible" title="配置差异预览" width="620px">
+    <div class="codeview" style="max-height:280px"><span style="color:#5ea05e">+   configuration:</span>
+<span style="color:#5ea05e">+     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl</span></div>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px">其余行未变（仅写入改动片段，保留注释与格式）</div>
+  </el-dialog>
+  <el-dialog v-model="diffSaveVisible" title="保存配置" width="440px">
+    <p style="margin:0">确认将配置写回远端并记录版本历史？</p>
+    <template #footer><el-button @click="diffSaveVisible=false">取消</el-button><el-button type="success" @click="diffSaveVisible=false">确认保存</el-button></template>
+  </el-dialog>
+
+  <!-- Nacos 连接设置 -->
+  <el-dialog v-model="nacosConnVisible" title="Nacos 连接设置" width="440px">
+    <el-form label-width="90px">
+      <el-form-item label="IP / 主机"><el-input v-model="nacosConn.host" class="mono"/></el-form-item>
+      <el-form-item label="端口"><el-input v-model="nacosConn.port" class="mono" placeholder="默认 8848"/></el-form-item>
+      <el-form-item label="命名空间"><el-input v-model="nacosConn.namespace" class="mono" placeholder="public"/></el-form-item>
+      <el-form-item label="用户名"><el-input v-model="nacosConn.username"/></el-form-item>
+      <el-form-item label="密码"><el-input v-model="nacosConn.password" type="password" show-password/></el-form-item>
+    </el-form>
+    <div style="font-size:12px;color:var(--faint);margin-top:-8px">密码加密存储（AES-GCM），连接信息存于本地 settings</div>
+    <template #footer>
+      <el-button @click="nacosConnVisible=false">取消</el-button>
+      <el-button type="primary" @click="nacosConnVisible=false">保存并连接</el-button>
+    </template>
+  </el-dialog>
+
+  <!-- 新增机器 -->
+  <el-dialog v-model="machineVisible" :title="editingMachine?'编辑机器':'新增机器'" width="480px">
+    <el-form label-width="90px">
+      <el-form-item label="名称"><el-input v-model="machineForm.name" placeholder="如 prod-web-03"/></el-form-item>
+      <el-form-item label="主机 / IP"><el-input v-model="machineForm.host" class="mono" placeholder="192.168.1.13"/></el-form-item>
+      <el-form-item label="端口"><el-input v-model="machineForm.port" class="mono" placeholder="SSH 22 / Agent 8848"/></el-form-item>
+      <el-form-item label="连接模式">
+        <el-radio-group v-model="machineForm.mode">
+          <el-radio-button value="ssh">SSH 直连</el-radio-button>
+          <el-radio-button value="agent">Agent</el-radio-button>
+        </el-radio-group>
+      </el-form-item>
+      <el-form-item label="用户名"><el-input v-model="machineForm.username" placeholder="SSH 登录用户"/></el-form-item>
+      <el-form-item label="密码"><el-input v-model="machineForm.password" type="password" show-password placeholder="密码加密存储"/></el-form-item>
+    </el-form>
+    <div style="font-size:12px;color:var(--faint);margin-top:-8px">凭证 AES-GCM 加密存储；Agent 模式走 8848 端口</div>
+    <template #footer>
+      <el-button @click="machineVisible=false">取消</el-button>
+      <el-button type="primary" @click="addMachine()">保存</el-button>
+    </template>
+  </el-dialog>
+
+  <!-- 新增 / 编辑应用 -->
+  <el-dialog v-model="appVisible" :title="editingApp?'编辑应用':'新增应用'" width="560px">
+    <el-form label-width="110px">
+      <el-form-item label="应用名"><el-input v-model="appForm.name" placeholder="如 order-service"/></el-form-item>
+      <el-form-item label="描述"><el-input v-model="appForm.desc" placeholder="微服务应用描述"/></el-form-item>
+      <el-form-item label="JAR 目录"><el-input v-model="appForm.jarDir" class="mono" placeholder="/opt/order-service"/></el-form-item>
+      <el-form-item label="日志目录"><el-input v-model="appForm.logDir" class="mono" placeholder="/opt/order-service/logs"/></el-form-item>
+      <el-form-item label="启动文件目录"><el-input v-model="appForm.binDir" class="mono" placeholder="/opt/order-service/bin"/></el-form-item>
+      <el-form-item label="配置文件目录"><el-input v-model="appForm.cfgDir" class="mono" placeholder="/opt/order-service/config"/></el-form-item>
+      <el-form-item label="配置文件"><el-input v-model="appForm.files" placeholder="逗号分隔文件名，如 application.yml,log4j2.xml"/></el-form-item>
+      <el-form-item label="启动命令"><el-input type="textarea" :rows="2" v-model="appForm.startCmd" class="mono" placeholder="java -Xms1024m -Xmx2048m -jar ..."/></el-form-item>
+    </el-form>
+    <div style="font-size:12px;color:var(--faint);margin-top:-8px">目录留空时按 /opt/{应用名} 自动推导；配置文件为相对配置文件目录的文件名</div>
+    <template #footer>
+      <el-button @click="appVisible=false">取消</el-button>
+      <el-button type="primary" @click="addApp()">保存</el-button>
+    </template>
+  </el-dialog>
+
+  <!-- 数据库切换 -->
+  <el-dialog v-model="dbVisible" title="数据库切换" width="460px">
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px">应用 <b>{{dbApp}}</b> · 从{{curDb?.current==='primary'?'主库':'备库'}}切换到{{curDb?.current==='primary'?'备库':'主库'}}</div>
+    <div v-for="(s,i) in dbSteps" :key="i" style="display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px">
+      <span class="pill" :class="dbStep>i?'ok':(dbStep===i?'warn':'')">{{dbStep>i?'✓':(i+1)}}</span>
+      <span :style="dbStep>=i?{color:'var(--ink)'}:{color:'var(--faint)'}">{{s}}</span>
+    </div>
+    <el-alert v-if="dbStep>=4" type="success" :closable="false" title="数据库切换完成" style="margin-top:8px"/>
+    <template #footer><el-button @click="dbVisible=false">关闭</el-button></template>
+  </el-dialog>
+</div>
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@3.4.38/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/element-plus@2.7.8/dist/index.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@element-plus/icons-vue@2.3.1/dist/index.iife.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+
+<script>
+const { createApp, nextTick } = Vue;
+const { ElMessage, ElMessageBox } = ElementPlus;
+
+const app = createApp({
+template: '#tpl',
+data(){
+  const machines=[
+    {id:1,name:"prod-web-01",host:"192.168.1.11",port:22,mode:"ssh",status:"on",apps:6},
+    {id:2,name:"prod-web-02",host:"192.168.1.12",port:22,mode:"ssh",status:"on",apps:5},
+    {id:3,name:"prod-app-01",host:"192.168.2.21",port:8848,mode:"agent",status:"on",apps:4},
+    {id:4,name:"test-01",host:"192.168.3.31",port:8848,mode:"agent",status:"err",apps:2},
+  ];
+  const applications=[
+    {id:1,name:"nsys",desc:"订单核心服务",instances:3,running:3,stopped:0,jarDir:"/opt/nsys",logDir:"/opt/nsys/logs",binDir:"/opt/nsys/bin",cfgDir:"/opt/nsys/config",startCmd:"java -Xms1024m -Xmx2048m -XX:+UseG1GC -jar /opt/nsys/nsys.jar --spring.profiles.active=prod"},
+    {id:2,name:"gateway",desc:"API 网关",instances:2,running:2,stopped:0,jarDir:"/opt/gateway",logDir:"/opt/gateway/logs",binDir:"/opt/gateway/bin",cfgDir:"/opt/gateway/config",startCmd:"java -Xms512m -Xmx1024m -jar /opt/gateway/gateway.jar"},
+    {id:3,name:"user-service",desc:"用户服务",instances:2,running:1,stopped:1,jarDir:"/opt/user-service",logDir:"/opt/user-service/logs",binDir:"/opt/user-service/bin",cfgDir:"/opt/user-service/config",startCmd:"java -Xms512m -Xmx1024m -jar /opt/user-service/user.jar"},
+    {id:4,name:"pay-service",desc:"支付服务",instances:2,running:2,stopped:0,jarDir:"/opt/pay-service",logDir:"/opt/pay-service/logs",binDir:"/opt/pay-service/bin",cfgDir:"/opt/pay-service/config",startCmd:"java -Xms1024m -Xmx2048m -jar /opt/pay-service/pay.jar"},
+  ];
+  const instances=[
+    {id:1,app:"nsys",machine:"prod-web-01",dir:"/opt/nsys",port:8081,pid:12001,status:"on",jar:"nsys-1.4.2.jar",ver:"1.4.2",started:"2026-10-31 16:42"},
+    {id:2,app:"nsys",machine:"prod-web-02",dir:"/opt/nsys",port:8081,pid:12002,status:"on",jar:"nsys-1.4.2.jar",ver:"1.4.2",started:"2026-10-31 16:43"},
+    {id:3,app:"nsys",machine:"prod-app-01",dir:"/opt/nsys",port:8081,pid:12003,status:"on",jar:"nsys-1.4.2.jar",ver:"1.4.2",started:"2026-10-31 16:45"},
+    {id:4,app:"gateway",machine:"prod-web-01",dir:"/opt/gateway",port:8080,pid:11001,status:"on",jar:"gateway-2.1.0.jar",ver:"2.1.0",started:"2026-10-30 09:12"},
+    {id:5,app:"gateway",machine:"prod-web-02",dir:"/opt/gateway",port:8080,pid:11002,status:"on",jar:"gateway-2.1.0.jar",ver:"2.1.0",started:"2026-10-30 09:13"},
+    {id:6,app:"user-service",machine:"prod-app-01",dir:"/opt/user-service",port:8090,pid:13001,status:"on",jar:"user-3.0.5.jar",ver:"3.0.5",started:"2026-10-31 10:00"},
+    {id:7,app:"user-service",machine:"test-01",dir:"/data/apps/user-service",port:8090,pid:0,status:"off",jar:"user-3.0.5.jar",ver:"3.0.5",started:"—"},
+    {id:8,app:"pay-service",machine:"prod-web-01",dir:"/opt/pay-service",port:8082,pid:14001,status:"on",jar:"pay-1.8.0.jar",ver:"1.8.0",started:"2026-10-29 18:30"},
+    {id:9,app:"pay-service",machine:"prod-web-02",dir:"/opt/pay-service",port:8082,pid:14002,status:"on",jar:"pay-1.8.0.jar",ver:"1.8.0",started:"2026-10-29 18:31"},
+  ];
+  const deployments=[
+    {t:"2026-10-31 16:42",app:"nsys",ver:"1.4.2",res:"ok"},
+    {t:"2026-10-30 09:12",app:"gateway",ver:"2.1.0",res:"ok"},
+    {t:"2026-10-30 08:47",app:"user-service",ver:"3.0.5",res:"ok"},
+    {t:"2026-10-28 14:20",app:"nsys",ver:"1.4.1",res:"fail"},
+  ];
+  const releases=[
+    {id:1,app:"nsys",ver:"1.4.2",t:"2026-10-31 16:42",by:"admin",note:"滚动发布",current:true},
+    {id:2,app:"nsys",ver:"1.4.1",t:"2026-10-28 14:20",by:"admin",note:"滚动发布",current:false},
+    {id:3,app:"nsys",ver:"1.4.0",t:"2026-10-20 09:00",by:"admin",note:"初始发布",current:false},
+    {id:4,app:"gateway",ver:"2.1.0",t:"2026-10-30 09:12",by:"admin",note:"滚动发布",current:true},
+    {id:5,app:"gateway",ver:"2.0.9",t:"2026-10-21 11:30",by:"admin",note:"滚动发布",current:false},
+    {id:6,app:"user-service",ver:"3.0.5",t:"2026-10-30 08:47",by:"admin",note:"滚动发布",current:true},
+    {id:7,app:"user-service",ver:"3.0.4",t:"2026-10-25 15:10",by:"admin",note:"滚动发布",current:false},
+    {id:8,app:"pay-service",ver:"1.8.0",t:"2026-10-29 18:30",by:"admin",note:"滚动发布",current:true},
+    {id:9,app:"pay-service",ver:"1.7.9",t:"2026-10-22 10:00",by:"admin",note:"滚动发布",current:false},
+  ];
+  const nacosConfigs=[
+    {dataId:"nsys.yaml",group:"DEFAULT_GROUP",fmt:"yaml",app:"nsys",ip:"192.168.1.11",content:"server:\n  port: 8081\nspring:\n  application:\n    name: nsys\n  datasource:\n    url: jdbc:mysql://10.0.0.8:3306/nsys\n    username: nsys\n    password: '******'"},
+    {dataId:"nsys-dev.yaml",group:"DEFAULT_GROUP",fmt:"yaml",app:"nsys",ip:"192.168.1.11",content:"spring:\n  datasource:\n    url: jdbc:mysql://10.0.0.8:3306/nsys_dev\nlogging:\n  level:\n    com.nsys: debug"},
+    {dataId:"nsys-prod.yaml",group:"DEFAULT_GROUP",fmt:"yaml",app:"nsys",ip:"192.168.1.12",content:"server:\n  port: 8081\nspring:\n  datasource:\n    url: jdbc:mysql://10.0.0.9:3306/nsys\nlogging:\n  level:\n    com.nsys: info"},
+    {dataId:"gateway.properties",group:"GATEWAY",fmt:"properties",app:"gateway",ip:"192.168.1.11",content:"server.port=8080\nspring.application.name=gateway\nspring.cloud.gateway.routes[0].id=nsys\nspring.cloud.gateway.routes[0].uri=lb://nsys"},
+    {dataId:"gateway-dev.properties",group:"GATEWAY",fmt:"properties",app:"gateway",ip:"192.168.2.21",content:"server.port=8080\nspring.application.name=gateway\nspring.cloud.gateway.routes[0].uri=lb://nsys-dev"},
+    {dataId:"user-service.yaml",group:"DEFAULT_GROUP",fmt:"yaml",app:"user-service",ip:"192.168.2.21",content:"server:\n  port: 8090\nspring:\n  application:\n    name: user-service\n  datasource:\n    url: jdbc:mysql://10.0.0.8:3306/user"},
+    {dataId:"pay-service.yaml",group:"DEFAULT_GROUP",fmt:"yaml",app:"pay-service",ip:"192.168.1.12",content:"server:\n  port: 8082\nspring:\n  application:\n    name: pay-service"},
+  ];
+  const dbConfigs=[
+    {app:"nsys", primary:"10.0.0.8:3306/nsys", backup:"10.0.0.9:3306/nsys", current:"primary"},
+    {app:"gateway", primary:"10.0.0.8:3306/gateway", backup:"10.0.0.9:3306/gateway", current:"primary"},
+    {app:"user-service", primary:"10.0.0.8:3306/user", backup:"10.0.0.9:3306/user", current:"backup"},
+    {app:"pay-service", primary:"10.0.0.8:3306/pay", backup:"10.0.0.9:3306/pay", current:"primary"},
+  ];
+  const appFiles={ "nsys":["application.yml","application-dev.yml","log4j2.xml"], "gateway":["application.yml","log4j2.xml"], "user-service":["application.properties","log4j2.xml"], "pay-service":["application.yml","log4j2.xml"] };
+  return {
+    authed:false, loginForm:{user:"admin",pass:""},
+    view:"dashboard", machines, applications, instances, deployments, releases, nacosConfigs, dbConfigs, appFiles,
+    selectedApp:null, selectedInstance:null, activeTab:"overview",
+    nacosSelected:0, nacosQ:"", nacosIp:"", nacosApp:"", nacosMode:"kv", nacosKvRows:[],
+    nacosConn:{host:"10.0.0.20",port:"8848",namespace:"public",username:"nacos",password:"nacos"}, nacosConnVisible:false,
+    machineQ:"", appQ:"", machineVisible:false, editingMachine:null, machineForm:{name:"",host:"",port:"22",mode:"ssh",username:"",password:""}, appVisible:false, editingApp:null, appForm:{name:"",desc:"",files:"",jarDir:"",logDir:"",binDir:"",cfgDir:"",startCmd:""},
+    configApp:"nsys", configInst:"prod-web-01", selectedFile:"application.yml", cfgMode:"kv",
+    logMachine:"prod-web-01", logInstance:"1", logFile:"app.log", logDownloading:false, logStartIndex:0, logKeyword:"",
+    deployVisible:false, deployRunning:false, deployStep:0, deployMode:"rolling", deployTarget:null, batchSize:2, uploadPct:0, deployVer:"1.4.3", dbApp:"nsys", dbVisible:false, dbStep:0, dbSteps:["校验备库可用","切换数据库连接","更新应用配置","重启实例"],
+    deploySteps:["上传 JAR（分片）","停止实例","备份旧版本","替换 JAR","写入配置","启动实例","健康检查"],
+    logLines:[], logTimer:null,
+    charts:{}, diffVisible:false, diffSaveVisible:false,
+    cfgRows:[
+      {k:"server.port",v:"8081"},
+      {k:"spring.datasource.url",v:"jdbc:mysql://10.0.0.8:3306/nsys"},
+      {k:"spring.datasource.username",v:"nsys"},
+      {k:"mybatis.mapper-locations",v:"classpath*:mapper/*.xml"},
+      {k:"logging.level.com.nsys",v:"info"},
+    ],
+    cfgOrig:"server:\n  port: 8081\nspring:\n  application:\n    name: nsys\n  datasource:\n    url: jdbc:mysql://10.0.0.8:3306/nsys\n    username: nsys\n    password: '******'\nmybatis:\n  mapper-locations: classpath*:mapper/*.xml",
+    log4jXml:'<?xml version="1.0" encoding="UTF-8"?>\n<Configuration status="WARN">\n  <Appenders>\n    <Console name="Console" target="SYSTEM_OUT">\n      <PatternLayout pattern="%d{HH:mm:ss} %-5level %logger{36} - %msg%n"/>\n    </Console>\n    <RollingFile name="RollingFile" fileName="logs/app.log" filePattern="logs/app-%d{yyyy-MM-dd}.log.gz">\n      <PatternLayout pattern="%d %-5level %logger - %msg%n"/>\n      <SizeBasedTriggeringPolicy size="200MB"/>\n    </RollingFile>\n  </Appenders>\n  <Loggers>\n    <Root level="info">\n      <AppenderRef ref="Console"/>\n      <AppenderRef ref="RollingFile"/>\n    </Root>\n  </Loggers>\n</Configuration>',
+    propsContent:"server.port=8090\nspring.application.name=user-service\nspring.datasource.url=jdbc:mysql://10.0.0.8:3306/user\nspring.datasource.username=user",
+  };
+},
+computed:{
+  runningCount(){ return this.instances.filter(i=>i.status==="on").length },
+  stoppedCount(){ return this.instances.filter(i=>i.status==="off").length },
+  appInstances(){ return this.instances.filter(i=>i.app===this.selectedApp?.name) },
+  appReleases(){ return this.releases.filter(r=>r.app===this.selectedApp?.name) },
+  curNacos(){ return this.filteredNacos[this.nacosSelected] },
+  filteredNacos(){ return this.nacosConfigs.filter(c=>(!this.nacosIp||c.ip===this.nacosIp)&&(!this.nacosApp||c.app===this.nacosApp)); },
+  nacosIsKv(){ const c=this.curNacos; return !!c && (c.fmt==="yaml"||c.fmt==="properties"); },
+  curApp(){ return this.selectedApp },
+  configInstances(){ return this.instances.filter(i=>i.app===this.configApp) },
+  configFiles(){ return this.appFiles[this.configApp] || [] },
+  curCfgDir(){ const a=this.applications.find(x=>x.name===this.configApp); return a?.cfgDir || ('/opt/'+this.configApp+'/config'); },
+  curInstApp(){ return this.applications.find(a=>a.name===this.selectedInstance?.app); },
+  curDb(){ return this.dbConfigs.find(d=>d.app===this.dbApp); },
+  jarPath(){ const i=this.selectedInstance, a=this.curInstApp; return (i&&a)?`${a.jarDir}/${i.jar}`:""; },
+  logPath(){ const a=this.curInstApp; return a?`${a.logDir}/app.log`:""; },
+  startCmd(){ const a=this.curInstApp; return a?.startCmd||""; },
+  isXml(){ return this.selectedFile.endsWith(".xml") },
+  isYaml(){ return /\.ya?ml$/.test(this.selectedFile) },
+  isProps(){ return this.selectedFile.endsWith(".properties") },
+  fileFmt(){ return this.isXml ? "xml" : (this.isProps ? "properties" : "yaml") },
+  editorText(){ return this.isXml ? this.log4jXml : (this.isProps ? this.propsContent : this.cfgOrig) },
+  logInstances(){ return this.instances.filter(i=>i.machine===this.logMachine) },
+  curLogInstance(){ return this.instances.find(i=>String(i.id)===this.logInstance) },
+  curLogApp(){ return this.applications.find(a=>a.name===this.curLogInstance?.app); },
+  curLogFiles(){ if(!this.curLogApp) return []; return ["app.log","error.log","gc.log","app-2026-10-30.log.gz","app-2026-10-31.log.gz"]; },
+  filteredLogLines(){ if(!this.logKeyword) return this.logLines; const k=this.logKeyword.toLowerCase(); return this.logLines.filter(l=>l.msg.toLowerCase().includes(k)||l.lvl.toLowerCase().includes(k)); },
+},
+methods:{
+  doLogin(){ this.authed=true; this.view="dashboard"; this.renderCharts(); },
+  go(v){ this.view=v; },
+  openMachine(){ this.editingMachine=null; this.machineVisible=true; },
+  editMachine(m){ this.editingMachine=m.id; this.machineForm={name:m.name,host:m.host,port:String(m.port),mode:m.mode,username:"",password:""}; this.machineVisible=true; },
+  addMachine(){
+    if(!this.machineForm.name||!this.machineForm.host){ ElMessage.warning("请填写名称和主机"); return; }
+    if(this.editingMachine){
+      const m=this.machines.find(x=>x.id===this.editingMachine);
+      if(m){ m.name=this.machineForm.name; m.host=this.machineForm.host; m.port=Number(this.machineForm.port)||22; m.mode=this.machineForm.mode; }
+      ElMessage.success(`已更新机器 ${this.machineForm.name}`);
+    }else{
+      const id=Math.max(0,...this.machines.map(m=>m.id))+1;
+      this.machines.push({id, name:this.machineForm.name, host:this.machineForm.host, port:Number(this.machineForm.port)||22, mode:this.machineForm.mode, status:"on", apps:0});
+      ElMessage.success(`已新增机器 ${this.machineForm.name}`);
+    }
+    this.machineVisible=false;
+    this.editingMachine=null;
+    this.machineForm={name:"",host:"",port:"22",mode:"ssh",username:"",password:""};
+  },
+  testMachine(m){ ElMessage.info(`正在连接 ${m.name} …`); setTimeout(()=>{ ElMessage.success(`${m.name} 连接正常（${m.host}:${m.port}）`); },600); },
+  delMachine(m){ ElMessageBox.confirm(`确认删除机器 ${m.name}？其上的实例将无法管理。`, "删除机器", {type:"warning",confirmButtonText:"删除",cancelButtonText:"取消",confirmButtonClass:"el-button--danger"}).then(()=>{ this.machines=this.machines.filter(x=>x.id!==m.id); ElMessage.success(`已删除 ${m.name}`); }).catch(()=>{}); },
+  openAppForm(){ this.editingApp=null; this.appVisible=true; },
+  openAppCfg(){ const a=this.selectedApp; if(!a) return; this.editingApp=a.id; this.appForm={name:a.name,desc:a.desc,files:(this.appFiles[a.name]||[]).join(","),jarDir:a.jarDir,logDir:a.logDir,binDir:a.binDir,cfgDir:a.cfgDir,startCmd:a.startCmd}; this.appVisible=true; },
+  addApp(){
+    if(!this.appForm.name){ ElMessage.warning("请填写应用名"); return; }
+    const name=this.appForm.name;
+    const jarDir=this.appForm.jarDir||`/opt/${name}`;
+    const logDir=this.appForm.logDir||`${jarDir}/logs`;
+    const binDir=this.appForm.binDir||`${jarDir}/bin`;
+    const cfgDir=this.appForm.cfgDir||`${jarDir}/config`;
+    const startCmd=this.appForm.startCmd||`java -jar ${jarDir}/${name}.jar`;
+    const files=this.appForm.files?this.appForm.files.split(/[,，]/).map(s=>s.trim()).filter(Boolean):["application.yml","log4j2.xml"];
+    if(this.editingApp){
+      const a=this.applications.find(x=>x.id===this.editingApp);
+      if(a){ a.name=name; a.desc=this.appForm.desc||"—"; a.jarDir=jarDir; a.logDir=logDir; a.binDir=binDir; a.cfgDir=cfgDir; a.startCmd=startCmd; }
+      this.appFiles[name]=files;
+      ElMessage.success(`已更新应用 ${name}`);
+    }else{
+      const id=Math.max(0,...this.applications.map(a=>a.id))+1;
+      this.applications.push({id, name, desc:this.appForm.desc||"—", instances:0, running:0, stopped:0, jarDir, logDir, binDir, cfgDir, startCmd});
+      this.appFiles[name]=files;
+      ElMessage.success(`已新增应用 ${name}`);
+    }
+    this.appVisible=false;
+    this.editingApp=null;
+    this.appForm={name:"",desc:"",files:"",jarDir:"",logDir:"",binDir:"",cfgDir:"",startCmd:""};
+  },
+  publishNacos(){
+    const c=this.curNacos; if(!c) return;
+    if(this.nacosIsKv && this.nacosMode==="kv") c.content=this.serializeNacosRows(this.nacosKvRows, c.fmt);
+    ElMessageBox.confirm(`确认将 ${c.dataId} 发布到 Nacos？`, "发布配置", {type:"warning",confirmButtonText:"发布",cancelButtonText:"取消"}).then(()=>{ ElMessage.success(`已发布 ${c.dataId}`); }).catch(()=>{});
+  },
+  selectNacos(i){ this.nacosSelected=i; this.nacosMode="kv"; this.nacosKvRows=this.parseNacosRows(this.curNacos); },
+  loadNacosRows(){ this.nacosMode="kv"; this.nacosKvRows=this.parseNacosRows(this.curNacos); },
+  onNacosModeChange(){ if(this.nacosMode==="kv") this.nacosKvRows=this.parseNacosRows(this.curNacos); },
+  parseNacosRows(c){
+    if(!c) return [];
+    const lines=String(c.content||"").split(/\r?\n/);
+    if(c.fmt==="properties"){
+      const rows=[];
+      for(const ln of lines){
+        const s=ln.trim();
+        if(!s||s.startsWith("#")||s.startsWith("!")) continue;
+        const eq=s.indexOf("=");
+        if(eq<0) continue;
+        rows.push({k:s.slice(0,eq).trim(), v:s.slice(eq+1).trim()});
+      }
+      return rows;
+    }
+    if(c.fmt==="yaml"){
+      const rows=[], stack=[];
+      for(const ln of lines){
+        if(!ln.trim()||ln.trim().startsWith("#")) continue;
+        const indent=(ln.match(/^\s*/)||[""])[0].length;
+        const m=ln.match(/^(\s*)([^:#]+):\s*(.*)$/);
+        if(!m) continue;
+        const key=m[2].trim(), val=(m[3]||"").trim();
+        while(stack.length && stack[stack.length-1].indent>=indent) stack.pop();
+        const path=[...stack.map(s=>s.key), key].join(".");
+        if(val) rows.push({k:path, v:val});
+        else stack.push({indent, key});
+      }
+      return rows;
+    }
+    return [];
+  },
+  serializeNacosRows(rows, fmt){
+    if(fmt==="properties") return rows.map(r=>`${r.k}=${r.v}`).join("\n");
+    return rows.map(r=>`${r.k}: ${r.v}`).join("\n");
+  },
+  saveSettings(){ ElMessage.success("设置已保存"); },
+  startDbSwitch(){
+    const d=this.curDb; if(!d) return;
+    const target=d.current==="primary"?"backup":"primary";
+    const targetAddr=target==="primary"?d.primary:d.backup;
+    this.dbVisible=true; this.dbStep=1;
+    let i=1;
+    const t=setInterval(()=>{
+      i++; this.dbStep=i;
+      if(i===3){ d.current=target; }
+      if(i>=4){ clearInterval(t); ElMessage.success(`数据库切换完成：已切至${target==="primary"?"主库":"备库"} ${targetAddr}`); }
+    },550);
+  },
+  openApp(a){ this.selectedApp=a; this.view="app-detail"; },
+  openInstance(i){ this.selectedInstance=i; this.activeTab="overview"; this.view="instance-detail"; },
+  backApps(){ this.view="apps"; },
+  backApp(){ this.view="app-detail"; },
+  goConfig(inst){ if(inst){ this.configApp=inst.app; this.configInst=inst.machine; } this.view="config"; },
+  onCfgApp(){ if(this.configInstances.length) this.configInst=this.configInstances[0].machine; },
+  onNacosFilter(){ this.nacosSelected=0; this.loadNacosRows(); },
+  pickFile(f){ this.selectedFile=f; if(f.endsWith(".xml")) this.cfgMode="text"; },
+  statusLabel(s){ return s==="on"?"运行中":(s==="off"?"已停止":"异常") },
+  modeLabel(m){ return m==="ssh"?"SSH":"Agent"; },
+  openDeploy(){ this.deployVisible=true; this.deployRunning=false; this.deployStep=0; this.uploadPct=0; if(this.appInstances.length) this.deployTarget=this.appInstances[0].id; },
+  startDeploy(){
+    this.deployRunning=true; this.deployStep=1;
+    const t=setInterval(()=>{ this.uploadPct=Math.min(100,this.uploadPct+6); if(this.uploadPct>=100){ clearInterval(t); this.runSteps(); } },110);
+  },
+  runSteps(){ let i=1; const t=setInterval(()=>{ i++; this.deployStep=i; if(i>=7){ clearInterval(t); this.recordRelease(); } },550); },
+  recordRelease(){
+    const app=this.selectedApp?.name, ver=this.deployVer||"1.4.3";
+    if(!app) return;
+    this.releases.forEach(r=>{ if(r.app===app) r.current=false; });
+    this.releases.unshift({id:Date.now(),app,ver,t:this.nowStr(),by:"admin",note:this.deployMode==="single"?"单实例发布":"滚动发布",current:true});
+    this.deployments.unshift({t:this.nowStr(),app,ver,res:"ok"});
+    if(this.deployMode==="single"){
+      const t=this.instances.find(i=>i.id===this.deployTarget);
+      if(t){ t.ver=ver; t.jar=`${app}-${ver}.jar`; }
+    }else{
+      this.instances.filter(i=>i.app===app).forEach(i=>{ i.ver=ver; i.jar=`${app}-${ver}.jar`; });
+    }
+  },
+  rollbackTo(r){
+    ElMessageBox.confirm(`确认将 ${r.app} 回滚到 v${r.ver}？将覆盖当前部署。`, "版本回滚", { type:"warning", confirmButtonText:"回滚", cancelButtonText:"取消", confirmButtonClass:"el-button--danger" })
+      .then(()=>{
+        this.releases.forEach(x=>{ if(x.app===r.app) x.current=false; });
+        this.releases.unshift({id:Date.now(),app:r.app,ver:r.ver,t:this.nowStr(),by:"admin",note:"回滚至 v"+r.ver,current:true});
+        this.deployments.unshift({t:this.nowStr(),app:r.app,ver:r.ver,res:"ok"});
+        this.instances.filter(i=>i.app===r.app).forEach(i=>{ i.ver=r.ver; i.jar=`${r.app}-${r.ver}.jar`; });
+        ElMessage.success(`已回滚 ${r.app} 至 v${r.ver}`);
+      }).catch(()=>{});
+  },
+  pushLog(){
+    const isLogView=(this.view==="instance-detail" && this.activeTab==="log") || this.view==="logs";
+    if(!isLogView) return;
+    const r=Math.random(); const lvl=r<0.8?"INFO":(r<0.9?"WARN":"ERROR");
+    const msgs=["处理请求 /api/order/10023","查询订单完成 rows=1 cost=12ms","连接池 borrow 1ms","GC young 耗时 42ms"];
+    this.logLines.push({t:new Date().toTimeString().slice(0,8),lvl,msg:msgs[Math.floor(Math.random()*msgs.length)]});
+    if(this.logLines.length>200) this.logLines.splice(0,this.logLines.length-200);
+    const el=this.$refs.logBody; if(el) el.scrollTop=el.scrollHeight;
+  },
+  onLogMachine(){ if(this.logInstances.length){ this.logInstance=String(this.logInstances[0].id); } this.resetLogs(); },
+  onLogInstance(){ this.resetLogs(); },
+  onLogFile(){ this.resetLogs(); },
+  resetLogs(){ this.logLines=[]; this.logStartIndex=0; this.logDownloading=false; for(let i=0;i<14;i++) this.logLines.push({t:`16:4${i%10}:0${i%10}`,lvl:"INFO",msg:"启动回放 — 历史日志行 #"+(i+1)}); },
+  downloadLines(lines){
+    const content=lines.map(l=>`${l.t} ${l.lvl} ${l.msg}`).join("\n");
+    const blob=new Blob([content],{type:"text/plain;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download=`${this.curLogInstance?.app||"app"}.log`; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  },
+  downloadLog(){ this.downloadLines(this.logLines); },
+  hlText(s){ if(!this.logKeyword) return s; const re=new RegExp(this.logKeyword.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"gi"); return s.replace(re,m=>`<mark>${m}</mark>`); },
+  startRealDownload(){ this.logStartIndex=this.logLines.length; this.logDownloading=true; },
+  endRealDownload(){ this.downloadLines(this.logLines.slice(this.logStartIndex)); this.logDownloading=false; },
+  startLogs(){
+    for(let i=0;i<14;i++) this.logLines.push({t:`16:4${i%10}:0${i%10}`,lvl:"INFO",msg:"启动回放 — 历史日志行 #"+(i+1)});
+    this.logTimer=setInterval(()=>this.pushLog(),900);
+  },
+  renderCharts(){
+    nextTick(()=>{
+      this.renderStatusDonut();
+      if(this.view==="instance-detail" && this.activeTab==="monitor"){ this.renderHeap(); this.renderGc(); this.renderThread(); }
+    });
+  },
+  renderStatusDonut(){
+    const el=document.getElementById("chart-status"); if(!el) return;
+    if(!this.charts.status) this.charts.status=echarts.init(el);
+    this.charts.status.setOption({
+      color:["#0ca30c","#c0c6cd"],
+      tooltip:{trigger:"item"},
+      legend:{bottom:0,itemWidth:10,itemHeight:10,textStyle:{color:"#52514e",fontSize:12}},
+      series:[{type:"pie",radius:["58%","78%"],center:["50%","42%"],itemStyle:{borderColor:"#fff",borderWidth:2},label:{color:"#1a1f27",fontSize:12},
+        data:[{name:"运行中",value:this.runningCount},{name:"已停止",value:this.stoppedCount}]}]
+    });
+  },
+  genSeries(base,amp,n,seed){ const d=[];const now=Date.now(); for(let i=0;i<n;i++) d.push({x:now-(n-i)*5000,v:base+amp*Math.sin(i/4+seed)+amp*0.4*Math.sin(i/11)}); return d; },
+  axisTime(vals){ return vals.map(v=>{const d=new Date(v.x);return d.getHours()+":"+String(d.getMinutes()).padStart(2,"0");}); },
+  renderHeap(){
+    const el=document.getElementById("chart-heap"); if(!el) return;
+    if(!this.charts.heap) this.charts.heap=echarts.init(el);
+    const used=this.genSeries(1200,180,60,1).map(p=>Math.round(p.v));
+    const committed=this.genSeries(1500,40,60,3).map(p=>Math.round(p.v));
+    const max=1900;
+    this.charts.heap.setOption({
+      tooltip:{trigger:"axis"},
+      legend:{top:0,itemWidth:10,itemHeight:10,textStyle:{color:"#52514e",fontSize:12}},
+      grid:{left:46,right:16,top:38,bottom:30},
+      xAxis:{type:"category",boundaryGap:false,data:this.axisTime(this.genSeries(1200,180,60,1)),axisLine:{lineStyle:{color:"#c3c2b7"}},axisLabel:{color:"#898781",fontSize:11}},
+      yAxis:{type:"value",name:"MB",nameTextStyle:{color:"#898781"},splitLine:{lineStyle:{color:"#e1e0d9"}},axisLabel:{color:"#898781",fontSize:11}},
+      series:[
+        {name:"堆 used",type:"line",smooth:true,showSymbol:false,data:used,lineStyle:{width:2,color:"#2a78d6"},itemStyle:{color:"#2a78d6"},areaStyle:{color:"#2a78d6",opacity:0.12}},
+        {name:"堆 committed",type:"line",smooth:true,showSymbol:false,data:committed,lineStyle:{width:1.5,color:"#86b6ef",type:"dashed"},itemStyle:{color:"#86b6ef"}},
+        {name:"Max",type:"line",showSymbol:false,data:used.map(()=>max),lineStyle:{width:1,color:"#898781",type:"dotted"}},
+      ]
+    });
+  },
+  renderGc(){
+    const el=document.getElementById("chart-gc"); if(!el) return;
+    if(!this.charts.gc) this.charts.gc=echarts.init(el);
+    const ygc=this.genSeries(40,18,60,5).map(p=>Math.round(p.v));
+    const fgc=this.genSeries(120,60,60,8).map(p=>Math.round(p.v));
+    this.charts.gc.setOption({
+      tooltip:{trigger:"axis"},
+      legend:{top:0,itemWidth:10,itemHeight:10,textStyle:{color:"#52514e",fontSize:12}},
+      grid:{left:46,right:16,top:38,bottom:30},
+      xAxis:{type:"category",boundaryGap:false,data:this.axisTime(this.genSeries(40,18,60,5)),axisLine:{lineStyle:{color:"#c3c2b7"}},axisLabel:{color:"#898781",fontSize:11}},
+      yAxis:{type:"value",name:"ms",nameTextStyle:{color:"#898781"},splitLine:{lineStyle:{color:"#e1e0d9"}},axisLabel:{color:"#898781",fontSize:11}},
+      series:[
+        {name:"Young GC",type:"line",smooth:true,showSymbol:false,data:ygc,lineStyle:{width:2,color:"#2a78d6"}},
+        {name:"Full GC",type:"line",smooth:true,showSymbol:false,data:fgc,lineStyle:{width:2,color:"#eb6834"}},
+      ]
+    });
+  },
+  renderThread(){
+    const el=document.getElementById("chart-thread"); if(!el) return;
+    if(!this.charts.thread) this.charts.thread=echarts.init(el);
+    const th=this.genSeries(210,30,60,2).map(p=>Math.round(p.v));
+    this.charts.thread.setOption({
+      tooltip:{trigger:"axis"},
+      grid:{left:46,right:16,top:16,bottom:30},
+      xAxis:{type:"category",boundaryGap:false,data:this.axisTime(this.genSeries(210,30,60,2)),axisLine:{lineStyle:{color:"#c3c2b7"}},axisLabel:{color:"#898781",fontSize:11}},
+      yAxis:{type:"value",name:"线程",nameTextStyle:{color:"#898781"},splitLine:{lineStyle:{color:"#e1e0d9"}},axisLabel:{color:"#898781",fontSize:11}},
+      series:[{name:"线程数",type:"line",smooth:true,showSymbol:false,data:th,lineStyle:{width:2,color:"#2a78d6"},areaStyle:{color:"#2a78d6",opacity:0.10}}]
+    });
+  },
+  showDiff(){ this.diffVisible=true; },
+  saveCfg(){ this.diffSaveVisible=true; },
+  nowStr(){ const d=new Date(),p=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; },
+  syncAppCounts(){ this.applications.forEach(a=>{ const list=this.instances.filter(i=>i.app===a.name); a.running=list.filter(i=>i.status==="on").length; a.stopped=list.filter(i=>i.status==="off").length; }); },
+  startInstance(inst){
+    if(!inst) return;
+    if(inst.status==="on"){ ElMessage.info(`${inst.app} @ ${inst.machine} 已在运行`); return; }
+    inst.status="on"; inst.pid=Math.floor(20000+Math.random()*30000); inst.started=this.nowStr();
+    this.syncAppCounts();
+    ElMessage.success(`已启动 ${inst.app} @ ${inst.machine}（PID ${inst.pid}）`);
+  },
+  stopInstance(inst){
+    if(!inst) return;
+    ElMessageBox.confirm(`确认停止 ${inst.app} @ ${inst.machine} 吗？停止后端口 ${inst.port} 将释放。`, "停止实例", {
+      type:"warning", confirmButtonText:"停止", cancelButtonText:"取消", confirmButtonClass:"el-button--danger"
+    }).then(()=>{
+      inst.status="off"; inst.pid=0; inst.started="—";
+      this.syncAppCounts();
+      ElMessage.success(`已停止 ${inst.app} @ ${inst.machine}`);
+    }).catch(()=>{});
+  },
+  restartInstance(inst){
+    if(!inst) return;
+    ElMessage.info(`正在重启 ${inst.app} @ ${inst.machine} …`);
+    setTimeout(()=>{
+      inst.status="on"; inst.pid=Math.floor(20000+Math.random()*30000); inst.started=this.nowStr();
+      this.syncAppCounts();
+      ElMessage.success(`已重启 ${inst.app} @ ${inst.machine}（PID ${inst.pid}）`);
+    },800);
+  },
+},
+mounted(){ this.startLogs(); this.renderCharts(); this.loadNacosRows(); },
+watch:{ view(){ this.renderCharts(); }, activeTab(){ this.renderCharts(); } },
+beforeUnmount(){ if(this.logTimer) clearInterval(this.logTimer); }
+});
+
+for(const [key,comp] of Object.entries(ElementPlusIconsVue)){ app.component(key,comp); }
+app.use(ElementPlus).mount("#app");
+</script>
+</body>
+</html>
