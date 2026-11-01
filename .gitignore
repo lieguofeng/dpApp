@@ -1,0 +1,13 @@
+# 运行时数据
+dpapp.db
+*.db
+*.db-shm
+*.db-wal
+
+# 构建产物
+*.exe
+dist/
+web/dist/
+
+# 依赖
+web/node_modules/
